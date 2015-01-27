@@ -1,7 +1,7 @@
 # http://www.gnu.org/software/automake
 Makefile
 Makefile.in
-
+cache
 # http://www.gnu.org/software/autoconf
 
 autom4te.cache
@@ -17,6 +17,8 @@ ltmain.sh
 m4/
 ar-lib
 .project
+.*
+~
 config.*
 
 # log files
