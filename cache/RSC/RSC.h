@@ -31,8 +31,7 @@
 #define PX_ASSERT(stmt) {PX_BOOL res = (stmt);if(!(res)){RSCLOG("PX_ASSERT", FATAL_F); assert(res);}}
 
 
-//#define MOUNTPOINT "/home/geek/Desktop/src"
-#define MOUNTPOINT "/px/mfs/10.0.10.91/public_CIFS_2"
+//#define MOUNTPOINT "/px/mfs/10.0.10.10/media/data/rsc_test_dir/dom_NFS_MFS_1"
 
 #define PERROR(fmt, ...) {\
 	char str[MAX_MSG];\
@@ -261,10 +260,13 @@ typedef struct FetchWorker
 	int using;
 }FetchWorker;
 FetchWorker* g_fetchworker;
+int g_fetchworker_exit;
+#define NUMFETCHWORKER 2l
 #define FETCHWORKERSLEEPTIME 20
 
 void fetchDir(const char *name);
 void Init_fetch_thread();
+void Finit_fetch_thread();
 void Block_fetch_thread();
 void Wakeup_fetch_thread();
 

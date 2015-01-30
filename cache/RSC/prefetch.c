@@ -6,7 +6,7 @@
 #include <string.h>
 #include <RSC.h>
 #include <fcntl.h>
-
+#include <sched.h>
 
 
 void checkbusy()
@@ -16,7 +16,6 @@ void checkbusy()
 		pthread_cond_wait(&g_fetchworker->cv, &g_fetchworker->mt);
 	PX_UNLOCK(&g_fetchworker->mt);
 }
-
 
 void ReadFileToCache(const char *path)
 {
@@ -35,12 +34,11 @@ void ReadFileToCache(const char *path)
 	lseek(fh, 0l, SEEK_SET);
 	void* buf = malloc(RSCBLKSIZE + 1);
 
-//	lseek(fh, 0L, SEEK_SET);
 	off_t i = 0;
-	while (1)
+	while (PX_TRUE)
 	{
 		checkbusy();
-		if(filesize == 0)
+		if (filesize == 0)
 		{
 			break;
 		}
@@ -52,7 +50,8 @@ void ReadFileToCache(const char *path)
 			PX_ASSERT(nread==RSCBLKSIZE);
 			Insert_RSC_table(path, buf, RSCBLKSIZE, i, KEEPCURRENT_F);
 			i += RSCBLKSIZE;
-		} else
+		}
+		else
 		{
 			bzero(buf, RSCBLKSIZE + 1);
 			size_t nread = pread(fh, buf, filesize - i, i);
@@ -64,8 +63,6 @@ void ReadFileToCache(const char *path)
 	free(buf);
 	PX_ASSERT(close(fh) == 0);
 }
-
-
 
 void fetchDir(const char *dirname)
 {
@@ -102,7 +99,6 @@ void fetchDir(const char *dirname)
 	} while ( (entry = readdir(dir)) != NULL);
 	closedir(dir);
 }
-
 
 static PathEntry* parseentry(char* buf, PathType pathtype, char*tmp)
 {
@@ -150,8 +146,11 @@ PathEntry* readfetchconf() // (PathEntry* pe_p)
 		}
 		else
 		{
-			petail->next = pet;
-			petail = pet;
+			if(petail)
+			{
+				petail->next = pet;
+				petail = pet;
+			}
 		}
 		continue;
 	}
@@ -177,12 +176,20 @@ void Wakeup_fetch_thread()
 	PX_UNLOCK(&g_fetchworker->mt);
 }
 
-
 static void* fetchworker(void* arg)
 {
+	pthread_attr_t thAttr;
+	int policy = 0;
+	pthread_attr_init(&thAttr);
+	pthread_attr_getschedpolicy(&thAttr, &policy);
+	pthread_setschedprio(pthread_self(), sched_get_priority_min(policy));
+	PX_ASSERT(pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL)==0);
+
 	PathEntry* pe = NULL;
 	while(PX_TRUE)
 	{
+		sleep(FETCHWORKERSLEEPTIME);
+#ifdef USEFETCHCONF
 		pe = readfetchconf();
 		while (pe != NULL)
 		{
@@ -201,11 +208,49 @@ static void* fetchworker(void* arg)
 
 		printf("done fetchworker!\n");
 		sleep(FETCHWORKERSLEEPTIME);
+#endif
 	}
 	pthread_exit(NULL);
 }
 
+void Finit_fetch_thread()
+{
+	FetchWorker* fw = g_fetchworker;
+	int i=0;
+	while(i < NUMFETCHWORKER)
+	{
+		PX_ASSERT(pthread_cancel(fw->tid)==0);
+		fw++;
+		i++;
+	}
+
+	free(g_fetchworker);
+}
+
 void Init_fetch_thread()
+{
+	g_fetchworker = (FetchWorker*) calloc(NUMFETCHWORKER, sizeof(FetchWorker));
+
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+
+	FetchWorker* fw = g_fetchworker;
+	int i=0;
+	while(i < NUMFETCHWORKER)
+	{
+		PX_ASSERT(pthread_create(&fw->tid, &attr, fetchworker, fw) == 0);
+		PX_ASSERT(pthread_mutex_init(&fw->mt, NULL) == 0);
+		PX_ASSERT(pthread_cond_init(&fw->cv, NULL) == 0);
+		fw->using = 0;
+
+		fw++;
+		i++;
+	}
+}
+
+void Init_fetch_thread1()
 {
 	g_fetchworker = (FetchWorker*) calloc(1l, sizeof(FetchWorker));
 	PX_ASSERT(pthread_create(&g_fetchworker->tid, NULL, fetchworker, g_fetchworker) == 0);

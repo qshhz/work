@@ -65,7 +65,6 @@ void Destory_file_block_table(void* addr)
 	PX_UNLOCK(&g_RSC_table_m->mt);
 }
 
-
 // only 1 thread call this to init
 void Init_RSC_table_m()
 {
@@ -109,8 +108,12 @@ void Init_RSC_table_m()
 // this function is for rename since, we need to keep the value but modify the key
 void Destory_RSC_table_m()
 {
+	Finit_fetch_thread();
+
 	PX_ASSERT(g_RSC_table_m != NULL);
+	PX_LOCK(&g_RSC_table_m->mt);
 	g_hash_table_destroy(g_RSC_table_m->tab);
+	PX_UNLOCK(&g_RSC_table_m->mt);
 // fbt->keyaddr = NULL;// no need since when value destory function called, key destory function also called
 	free(g_RSC_table_m);
 	PX_ASSERT(fclose(g_log_fp) == 0);
@@ -331,7 +334,7 @@ void Insert_RSC_table(const char *path, char* buf, size_t len, off_t off, INSERT
 		Alloc_file_block(bn_p);
 		if (bn_p->loc == INVLOC)
 		{
-//			RSCLOG("NO RSC cache blocks avaiable!", WARNING_F);
+			RSCLOG("NO RSC cache blocks avaiable!", WARNING_F);
 			free(bn_p);
 			Return_file_header(fh_p);
 			free(fh_p);
@@ -374,6 +377,7 @@ void Insert_RSC_table(const char *path, char* buf, size_t len, off_t off, INSERT
 		/* insert file block talbe into RSC_table */
 		g_hash_table_insert(g_RSC_table_m->tab, filename, fbt);
 	}
+//	PX_UNLOCK(&g_RSC_table_m->mt); // uncomment this makes dirty read.....
 
 	/*------------- disk section update ---------TODO use a thread doing this----------------*/
 	// update file header and block info in ram
@@ -387,7 +391,6 @@ void Insert_RSC_table(const char *path, char* buf, size_t len, off_t off, INSERT
 	if (fh_p) // only when create new file block table / new path comes
 		Write_cache_off(fh_p, sizeof(FileHeader), fh_p->loc); // write into file header
 	PX_UNLOCK(&g_RSC_table_m->mt);
-
 }
 
 // return 1 if found else 0
