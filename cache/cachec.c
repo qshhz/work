@@ -38,7 +38,10 @@
 #endif
 #include <sys/file.h> /* flock(2) */
 
-#include "RSC/RSC.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <RSC.h>
 pthread_mutex_t g_read_mt;
 
 //#define MOUNTPOINT "/home/alex/Desktop/mnt/fuse"
@@ -52,7 +55,7 @@ void getmfspath(const char *path, char* mfspath)
 
 
 #define GETMFSPATH() {char mfspath[MAX_MFS_PATH];\
-	sprintf(mfspath, "%s%s", MOUNTPOINT, path);\
+	sprintf(mfspath, "%s%s%c", MOUNTPOINT, path, '\0');\
 	path = mfspath;}
 
 static int cm_getattr(const char *path, struct stat *stbuf)
@@ -65,6 +68,39 @@ static int cm_getattr(const char *path, struct stat *stbuf)
 
 	if (res == -1)
 		return -errno;
+
+	if (S_ISREG(stbuf->st_mode))
+	{
+		FetchQueue* fq = NULL;
+
+		PX_LOCK(&g_fetchworker->g_fft->mt);
+		if (g_hash_table_lookup(g_fetchworker->g_fft->tab, path) == NULL)
+		{
+			char* mfspath = strdup(path);
+			fq = calloc(1l, sizeof(FetchQueue));
+			fq->mfspath = mfspath;
+			fq->flag = 	calloc(1l, sizeof(char));
+			fq->filesize = stbuf->st_size;
+			g_hash_table_insert(g_fetchworker->g_fft->tab, mfspath, fq->flag);
+		}
+		PX_UNLOCK(&g_fetchworker->g_fft->mt);
+
+	//	printf("mfspath: %s len %ld\n", mfspath, pathlen);
+
+		if (fq != NULL)
+		{
+			int i = g_hash_table_size(g_fetchworker->g_fft->tab) % NUMFETCHWORKER;
+			FetchWorker* fw = g_fetchworker + i;
+
+			PX_LOCK(&fw->mt);
+			if(fw->que == NULL)
+				fw->que = fq;
+			else
+				fw->que->next = fq;
+			pthread_cond_signal(&fw->cv);
+			PX_UNLOCK(&fw->mt);
+		}
+	}
 
 	return 0;
 }

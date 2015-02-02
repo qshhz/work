@@ -7,6 +7,8 @@
 #include <sys/time.h>
 
 
+extern void printcachedfiles();
+
 int main(int argc, char **argv) {
 
 	g_RSC_table_m = (RSC_table_m*) calloc((size_t) 1, sizeof(RSC_table_m));
@@ -49,6 +51,8 @@ int main(int argc, char **argv) {
 				"3. print blockheader freelist\n"
 				"4. print fileheader freelist\n"
 				"5. space left\n"
+				"6. print cached filenames\n"
+				"7. print cached file\n"
 				"0. exit\n");
 		int com;
 		scanf("%d", &com);
@@ -67,6 +71,9 @@ int main(int argc, char **argv) {
 		} else if (com == 5) {
 			printf(" space left\n");
 			printspaceleft();
+		} else if (com == 6) {
+			printf(" print cached filenames\n");
+			printcachedfiles();
 		} else if (com == 0) {
 			break;
 		} else

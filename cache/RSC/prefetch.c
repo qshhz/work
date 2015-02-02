@@ -17,8 +17,13 @@ void checkbusy()
 	PX_UNLOCK(&g_fetchworker->mt);
 }
 
-void ReadFileToCache(const char *path)
+void ReadFileToCache(const char *path, off_t size)
 {
+	if(size < 1)
+	{
+		return;
+	}
+
 	int fh = open(path, O_RDONLY);
 
 	if (fh == -1)
@@ -38,9 +43,11 @@ void ReadFileToCache(const char *path)
 	}
 
 
-	size_t filesize = lseek(fh, 0l, SEEK_END);
+//	size_t filesize = lseek(fh, 0l, SEEK_END);
+
+	size_t filesize = size;
 //	char buf[RSCBLKSIZE + 1];
-	lseek(fh, 0l, SEEK_SET);
+//	lseek(fh, 0l, SEEK_SET);
 	void* buf = malloc(RSCBLKSIZE + 1);
 
 	off_t i = 0;
@@ -100,7 +107,7 @@ void fetchDir(const char *dirname)
 		else if(entry->d_type == DT_REG)
 		{
 			sprintf(path, "%s/%s", dirname, entry->d_name);
-			ReadFileToCache(path);
+			ReadFileToCache(path, 0);
 		}
 
 		printf("%s\n", path);
@@ -197,16 +204,45 @@ static void* fetchworker(void* arg)
 
 	FetchWorker* fw = (FetchWorker*)arg;
 
-	PathEntry* pe = NULL;
+//	PathEntry* pe = NULL;
 	while(PX_TRUE)
 	{
-//		while
-//		pthread_cond_wait(fw->cv, fw->mt);
-		if(fw->id== 0)
-			ReadFileToCache("/px/mfs/10.0.10.10/media/data/rand2G");
+		FetchQueue* mfsitem;
+
+		PX_LOCK(&fw->mt);
+		while(fw->que == NULL)
+		{
+			pthread_cond_wait(&fw->cv, &fw->mt);
+		}
+
+		mfsitem = fw->que;
+		if (mfsitem != NULL)
+		{
+			fw->que = fw->que->next;
+			PX_UNLOCK(&fw->mt);
+
+			/*---------process write back queue---------*/
+//			ReadFileToCache(mfsitem->mfspath, mfsitem->filesize);
+			char msg[MAX_MSG];
+			sprintf(msg, "\tmfspath: %s -----id is %d------\n", mfsitem->mfspath, fw->id);
+			RSCLOG(msg, NORMAL_F);
+			*(mfsitem->flag) = '1' ;
+
+			sleep(10);
+			free(mfsitem);
+		}
 		else
-			ReadFileToCache("/px/mfs/10.0.10.10/media/data/core");
-		sleep(FETCHWORKERSLEEPTIME);
+		{
+			PX_UNLOCK(&fw->mt);
+		}
+
+		continue;
+
+//		if(fw->id== 0)
+//			ReadFileToCache("/px/mfs/10.0.10.10/media/data/rand2G");
+//		else
+//			ReadFileToCache("/px/mfs/10.0.10.10/media/data/core");
+//		sleep(FETCHWORKERSLEEPTIME);
 #ifdef USEFETCHCONF
 		pe = readfetchconf();
 		while (pe != NULL)
@@ -234,6 +270,8 @@ static void* fetchworker(void* arg)
 void Finit_fetch_thread()
 {
 	FetchWorker* fw = g_fetchworker;
+//	fw->que = NULL;
+
 	int i=0;
 	while(i < NUMFETCHWORKER)
 	{
@@ -241,6 +279,8 @@ void Finit_fetch_thread()
 		fw++;
 		i++;
 	}
+
+	g_hash_table_destroy(g_fetchworker->g_fft->tab);
 
 	free(g_fetchworker);
 }
@@ -253,6 +293,10 @@ void Init_fetch_thread()
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+	Fetch_files_table* ffs = (Fetch_files_table*) calloc(1l, sizeof(Fetch_files_table));
+	ffs->tab = g_hash_table_new_full(g_str_hash, g_str_equal, free,
+			free); // Destory_file_block_table will free key space
+	PX_ASSERT(pthread_mutex_init(&ffs->mt, NULL) == 0);
 
 	FetchWorker* fw = g_fetchworker;
 	int i=0;
@@ -263,15 +307,12 @@ void Init_fetch_thread()
 		PX_ASSERT(pthread_cond_init(&fw->cv, NULL) == 0);
 		fw->using = 0;
 		fw->id = i;
+		fw->g_fft = ffs;
 
 		fw++;
 		i++;
 	}
 
-	fetch_files_table ffs = (FetchWorker*) calloc(1l, sizeof(fetch_files_table));
-	ffs.tab = g_hash_table_new_full(g_str_hash, g_str_equal, free,
-			NULL); // Destory_file_block_table will free key space
-	PX_ASSERT(pthread_mutex_init(&ffs->mt, NULL) == 0);
 
 }
 

@@ -32,7 +32,7 @@
 
 
 //#define MOUNTPOINT "/px/mfs/10.0.10.10/media/data/rsc_test_dir/dom_NFS_MFS_1"
-#define MOUNTPOINT "/px/mfs/10.0.10.10/media/data"
+#define MOUNTPOINT "/px/mfs/10.0.10.91/public_CIFS_2"
 
 #define PERROR(fmt, ...) {\
 	char str[MAX_MSG];\
@@ -154,7 +154,8 @@ void printfileheaderfreelist();
 
 void printbnfreelist();
 
-void ReadFileToCache(const char *path);
+void ReadFileToCache(const char *path, off_t size);
+//void ReadFileToCache(const char *path);
 
 void ReadFileFromEndToCache(const char *path);
 
@@ -226,6 +227,8 @@ void Truncate_file_block_table(const char *path, off_t off);
 
 void printfh_m();
 
+void* Voiddup(const void*from, size_t size);
+
 
 /*--------------utils------------*/
 
@@ -253,6 +256,21 @@ typedef struct PathEntry
 	struct PathEntry* next;
 } PathEntry;
 
+typedef struct FetchQueue
+{
+	const char* mfspath;
+	char* flag;
+	off_t filesize;
+	struct FetchQueue* next;
+} FetchQueue;
+
+typedef struct Fetch_files_table
+{
+	GHashTable* tab; // key index of cache block, value
+	pthread_mutex_t mt;
+} Fetch_files_table;
+
+
 typedef struct FetchWorker
 {
 	pthread_cond_t cv;
@@ -260,17 +278,14 @@ typedef struct FetchWorker
 	pthread_t tid;
 	int id;
 	int using;
+	FetchQueue *que;
+	Fetch_files_table* g_fft;
+
 }FetchWorker;
 FetchWorker* g_fetchworker;
 int g_fetchworker_exit;
-#define NUMFETCHWORKER 2l
+#define NUMFETCHWORKER 4l
 #define FETCHWORKERSLEEPTIME 20
-
-typedef struct fetch_files_table
-{
-	GHashTable* tab; // key index of cache block, value
-	pthread_mutex_t mt;
-} fetch_files_table;
 
 void fetchDir(const char *name);
 void Init_fetch_thread();

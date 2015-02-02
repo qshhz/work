@@ -14,7 +14,7 @@ inline off_t* off_tdup(off_t v)
 	return key;
 }
 
-void* Voiddup(void*from, size_t size)
+void* Voiddup(const void*from, size_t size)
 {
 	void *to = malloc(size);
 	PX_ASSERT(to != NULL); // TODO remove later

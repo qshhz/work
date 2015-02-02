@@ -414,9 +414,43 @@ size_t printspaceleft()
 		total++;
 	}
 
-	printf("num of left blocks %ld, blksize %ld, space %ld\n", total, RSCBLKSIZE, total * RSCBLKSIZE);
+	printf("num of left blocks %ld, blksize %ld, space left %.2fG / %ldBytes\n", total, RSCBLKSIZE, total*1.0 * RSCBLKSIZE/1024/1024/1024, total * RSCBLKSIZE);
 
 	return total * RSCBLKSIZE;
+}
+
+void printcachedfiles()
+{
+#ifdef USEFREAD
+	PX_ASSERT(g_cache_fp != NULL);
+#else
+	PX_ASSERT(g_cache_fp != -1);
+#endif
+	MasterBlock mb;
+	Read_cache_off(&mb, sizeof(MasterBlock), MASTERBLOCKOFF);
+	g_block_pointer_section = mb.block_pointer_section;
+	g_file_header_section = mb.file_header_section;
+	g_block_section = mb.block_section;
+
+	FileHeader fh;
+
+	off_t i;
+	i = mb.file_header_section;
+	while (i < mb.block_pointer_section)
+	{
+		bzero(&fh, sizeof(FileHeader));
+		Read_cache_off(&fh, sizeof(FileHeader), i);
+
+		if (fh.nodeHeader != INVLOC)
+		{
+			PX_ASSERT(fh.path[0] != '\0');
+			PX_ASSERT(fh.path[0] != ' ');
+
+			printfh(&fh);
+		}
+		i += sizeof(FileHeader);
+	}
+
 }
 
 void printfileheaderfreelist()
