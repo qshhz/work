@@ -29,6 +29,15 @@ void ReadFileToCache(const char *path)
 
 	PX_ASSERT(fh != -1);
 
+	PX_LOCK(&g_RSC_table_m->mt);
+	file_block_table_m* fbt = g_hash_table_lookup(g_RSC_table_m->tab, path);
+	PX_UNLOCK(&g_RSC_table_m->mt);
+	if (fbt != NULL)
+	{
+		return;
+	}
+
+
 	size_t filesize = lseek(fh, 0l, SEEK_END);
 //	char buf[RSCBLKSIZE + 1];
 	lseek(fh, 0l, SEEK_SET);
@@ -185,9 +194,18 @@ static void* fetchworker(void* arg)
 	pthread_setschedprio(pthread_self(), sched_get_priority_min(policy));
 	PX_ASSERT(pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL)==0);
 
+
+	FetchWorker* fw = (FetchWorker*)arg;
+
 	PathEntry* pe = NULL;
 	while(PX_TRUE)
 	{
+//		while
+//		pthread_cond_wait(fw->cv, fw->mt);
+		if(fw->id== 0)
+			ReadFileToCache("/px/mfs/10.0.10.10/media/data/rand2G");
+		else
+			ReadFileToCache("/px/mfs/10.0.10.10/media/data/core");
 		sleep(FETCHWORKERSLEEPTIME);
 #ifdef USEFETCHCONF
 		pe = readfetchconf();
@@ -244,10 +262,17 @@ void Init_fetch_thread()
 		PX_ASSERT(pthread_mutex_init(&fw->mt, NULL) == 0);
 		PX_ASSERT(pthread_cond_init(&fw->cv, NULL) == 0);
 		fw->using = 0;
+		fw->id = i;
 
 		fw++;
 		i++;
 	}
+
+	fetch_files_table ffs = (FetchWorker*) calloc(1l, sizeof(fetch_files_table));
+	ffs.tab = g_hash_table_new_full(g_str_hash, g_str_equal, free,
+			NULL); // Destory_file_block_table will free key space
+	PX_ASSERT(pthread_mutex_init(&ffs->mt, NULL) == 0);
+
 }
 
 void Init_fetch_thread1()

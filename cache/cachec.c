@@ -868,7 +868,7 @@ static struct fuse_operations cm_oper = {
 	.listxattr	= cm_listxattr,
 	.removexattr	= cm_removexattr,
 #endif
-//	.lock		= cm_lock,,  blksize=131072 -d -o nonempty -o  big_writes,max_write=131072
+//	.lock		= cm_lock,///,  blksize=131072 -d -o nonempty -o  big_writes,max_write=131072
 	.flock		= cm_flock,
 
 	.flag_nullpath_ok = 1,

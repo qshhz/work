@@ -32,6 +32,7 @@
 
 
 //#define MOUNTPOINT "/px/mfs/10.0.10.10/media/data/rsc_test_dir/dom_NFS_MFS_1"
+#define MOUNTPOINT "/px/mfs/10.0.10.10/media/data"
 
 #define PERROR(fmt, ...) {\
 	char str[MAX_MSG];\
@@ -257,12 +258,19 @@ typedef struct FetchWorker
 	pthread_cond_t cv;
 	pthread_mutex_t mt;
 	pthread_t tid;
+	int id;
 	int using;
 }FetchWorker;
 FetchWorker* g_fetchworker;
 int g_fetchworker_exit;
 #define NUMFETCHWORKER 2l
 #define FETCHWORKERSLEEPTIME 20
+
+typedef struct fetch_files_table
+{
+	GHashTable* tab; // key index of cache block, value
+	pthread_mutex_t mt;
+} fetch_files_table;
 
 void fetchDir(const char *name);
 void Init_fetch_thread();
