@@ -68,7 +68,7 @@ static int cm_getattr(const char *path, struct stat *stbuf)
 
 	if (res == -1)
 		return -errno;
-
+#if 1
 	if (S_ISREG(stbuf->st_mode))
 	{
 		FetchQueue* fq = NULL;
@@ -84,8 +84,6 @@ static int cm_getattr(const char *path, struct stat *stbuf)
 			g_hash_table_insert(g_fetchworker->g_fft->tab, mfspath, fq->flag);
 		}
 		PX_UNLOCK(&g_fetchworker->g_fft->mt);
-
-	//	printf("mfspath: %s len %ld\n", mfspath, pathlen);
 
 		if (fq != NULL)
 		{
@@ -107,6 +105,7 @@ static int cm_getattr(const char *path, struct stat *stbuf)
 			PX_UNLOCK(&fw->mt);
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -397,11 +396,11 @@ static int cm_truncate(const char *path, off_t size)
 {
 	int res;
 
+	GETMFSPATH();
+
 	res = truncate(path, size);
 	if (res == -1)
 		return -errno;
-
-	GETMFSPATH();
 
 	Truncate_file_block_table(path, size);
 
@@ -692,13 +691,13 @@ static int cm_write(const char *path, const char *buf, size_t size, off_t offset
 	(void) path;
 
 	GETMFSPATH();
-	struct statvfs stbuf_t;
+//	struct statvfs stbuf_t;
 //	PX_ASSERT(-1 != statvfs(MOUNTPOINT, &stbuf_t));
-	PX_ASSERT(-1 != statvfs(path, &stbuf_t));
-	if(stbuf_t.f_bavail <= 538346748)
-	{
-		printf("test");
-	}
+//	PX_ASSERT(-1 != statvfs(path, &stbuf_t));
+//	if(stbuf_t.f_bavail <= 538346748)
+//	{
+//		printf("test");
+//	}
 
 	res = pwrite(fi->fh, buf, size, offset);
 

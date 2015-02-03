@@ -285,7 +285,7 @@ typedef struct FetchWorker
 }FetchWorker;
 FetchWorker* g_fetchworker;
 int g_fetchworker_exit;
-#define NUMFETCHWORKER 1l
+#define NUMFETCHWORKER 4l
 #define FETCHWORKERSLEEPTIME 20
 
 void fetchDir(const char *name);

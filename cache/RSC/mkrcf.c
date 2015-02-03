@@ -10,9 +10,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <assert.h>
-#include "RSC.h"
+#include <RSC.h>
 
-static int create_cmfile_with_data(off_t ncblk, off_t nfile, PX_BOOL r_f)
+static int create_cmfile_with_data(off_t ncblk, off_t nfile, PX_BOOL r_f, PX_BOOL hdonly_f)
 {
 	if (!r_f && 0 == access(CACHE_FILE, F_OK))
 	{
@@ -25,7 +25,15 @@ static int create_cmfile_with_data(off_t ncblk, off_t nfile, PX_BOOL r_f)
 	PX_ASSERT(nfile > 0);
 
 //	FILE *cache_fp = fopen(CACHE_FILE, "w+b");
-	int cache_fp = open(CACHE_FILE, O_CREAT | O_WRONLY | O_TRUNC);
+	int cache_fp;
+	if (hdonly_f)
+	{
+		cache_fp = open(CACHE_FILE, O_CREAT | O_WRONLY);
+	}
+	else
+	{
+		cache_fp = open(CACHE_FILE, O_CREAT | O_WRONLY | O_TRUNC);
+	}
 
 	if (cache_fp == 0)
 	{
@@ -130,6 +138,20 @@ static int create_cmfile_with_data(off_t ncblk, off_t nfile, PX_BOOL r_f)
 		i++;
 	}
 	printf("block pointer section finished!\n");
+
+	if (hdonly_f)
+	{
+		PX_ASSERT(close(cache_fp)==0);
+
+		cache_fp = open(CACHE_FILE, O_RDONLY);
+		struct stat fileStat;
+		PX_ASSERT(fstat(cache_fp, &fileStat) >= 0);
+
+		size_t filesize = lseek(cache_fp, 0l, SEEK_END);
+		PX_ASSERT(filesize == fileStat.st_size);
+		RSCLOG("RSC cache is reset!", NORMAL_F);
+		return 0;
+	}
 
 	/*------- write block info ---------- */
 	i = 0;
@@ -271,11 +293,17 @@ static int read_cmfile_with_data(off_t ncblk, off_t nfile)
 int main(int argc, char **argv)
 {
 	PX_BOOL r_f = PX_FALSE;
+	PX_BOOL hdonly_f = PX_FALSE;
 	if (argc == 2)
 	{
 		if (strcmp(argv[1], "-r") == 0)
 		{
 			r_f = PX_TRUE;
+		}
+		else if (strcmp(argv[1], "-rh") == 0)
+		{
+			r_f = PX_TRUE;
+			hdonly_f = PX_TRUE;
 		}
 	}
 
@@ -299,7 +327,7 @@ int main(int argc, char **argv)
 	printf("The num of file headers is %ld\n", nfiles);
 	printf("The num of cache blocks is %ld\n", ncblk);
 
-	create_cmfile_with_data(ncblk, nfiles, r_f);
+	create_cmfile_with_data(ncblk, nfiles, r_f, hdonly_f);
 	return 0;
 }
 

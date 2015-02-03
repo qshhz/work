@@ -264,10 +264,17 @@ void Insert_RSC_table(const char *path, char* buf, size_t len, off_t off, INSERT
 				fbt->tail = bpm_p;
 				bn_p->next = INVLOC;
 				bn_p->fileblockoff = realoff;
+				bn_p->fhloc = fh_p->loc;
+				fh_p->nodeTail = bn_p->loc;
+				off_t filelength = realoff + len;
+				if (fh_p->fileoff < filelength)
+				{
+					fh_p->fileoff = filelength;
+				}
 				off_t *key = off_tdup(realoff);
 				g_hash_table_insert(fbt->tab, key, bpm_p);
 			}
-			else if(insertflag == KEEPCURRENT_F)
+			else //if(insertflag == KEEPCURRENT_F)
 			{
 //				PX_ASSERT(insertflag == KEEPCURRENT_F);
 				fh_tail_p = fbt->tail->bpn;
@@ -307,7 +314,9 @@ void Insert_RSC_table(const char *path, char* buf, size_t len, off_t off, INSERT
 			if (fh_p->fileoff < filelength)
 			{
 				fh_p->fileoff = filelength;
+				fbt->fh_m->nodeTail = bpn_t->bpn->loc;
 			}
+//			fbt->fh_m->nodeTail
 			Write_cache_off(buf, len, bpn_t->bpn->memloc+left);
 		}
 	} else if(insertflag == KEEPCURRENT_F) // here write function will not trigger this function

@@ -222,13 +222,13 @@ static void* fetchworker(void* arg)
 			PX_UNLOCK(&fw->mt);
 
 			/*---------process write back queue---------*/
-//			ReadFileToCache(mfsitem->mfspath, mfsitem->filesize);
-			char msg[MAX_MSG];
-			sprintf(msg, "\tmfspath: %s -----id is %d------\n", mfsitem->mfspath, fw->id);
-			RSCLOG(msg, NORMAL_F);
+			ReadFileToCache(mfsitem->mfspath, mfsitem->filesize);
+//			char msg[MAX_MSG];
+//			sprintf(msg, "\tmfspath: %s -----id is %d------\n", mfsitem->mfspath, fw->id);
+//			RSCLOG(msg, NORMAL_F);
+//			sleep(10);
 			*(mfsitem->flag) = '1' ;
 
-			sleep(10);
 			free(mfsitem);
 		}
 		else
