@@ -210,15 +210,15 @@ static void* fetchworker(void* arg)
 		FetchQueue* mfsitem;
 
 		PX_LOCK(&fw->mt);
-		while(fw->que == NULL)
+		while(fw->head == NULL)
 		{
 			pthread_cond_wait(&fw->cv, &fw->mt);
 		}
 
-		mfsitem = fw->que;
+		mfsitem = fw->head;
 		if (mfsitem != NULL)
 		{
-			fw->que = fw->que->next;
+			fw->head = fw->head->next;
 			PX_UNLOCK(&fw->mt);
 
 			/*---------process write back queue---------*/
@@ -233,6 +233,7 @@ static void* fetchworker(void* arg)
 		}
 		else
 		{
+			fw->tail = NULL;
 			PX_UNLOCK(&fw->mt);
 		}
 

@@ -278,13 +278,14 @@ typedef struct FetchWorker
 	pthread_t tid;
 	int id;
 	int using;
-	FetchQueue *que;
+	FetchQueue *head;
+	FetchQueue *tail;
 	Fetch_files_table* g_fft;
 
 }FetchWorker;
 FetchWorker* g_fetchworker;
 int g_fetchworker_exit;
-#define NUMFETCHWORKER 4l
+#define NUMFETCHWORKER 1l
 #define FETCHWORKERSLEEPTIME 20
 
 void fetchDir(const char *name);

@@ -93,10 +93,16 @@ static int cm_getattr(const char *path, struct stat *stbuf)
 			FetchWorker* fw = g_fetchworker + i;
 
 			PX_LOCK(&fw->mt);
-			if(fw->que == NULL)
-				fw->que = fq;
+			if(fw->head == NULL)
+			{
+				fw->head = fq;
+				fw->tail = fq;
+			}
 			else
-				fw->que->next = fq;
+			{
+				fw->tail->next = fq;
+				fw->tail = fw->tail->next;
+			}
 			pthread_cond_signal(&fw->cv);
 			PX_UNLOCK(&fw->mt);
 		}
