@@ -7,6 +7,7 @@
 #include <RSC.h>
 #include <fcntl.h>
 #include <sched.h>
+#include <sys/stat.h>
 
 
 void checkbusy()
@@ -16,6 +17,47 @@ void checkbusy()
 		pthread_cond_wait(&g_fetchworker->cv, &g_fetchworker->mt);
 	PX_UNLOCK(&g_fetchworker->mt);
 }
+
+void QueueFileToRSC(const struct stat *stbuf, const char* path)
+{
+	if (S_ISREG(stbuf->st_mode))
+	{
+		FetchQueue* fq = NULL;
+
+		PX_LOCK(&g_fetchworker->g_fft->mt);
+		if (g_hash_table_lookup(g_fetchworker->g_fft->tab, path) == NULL)
+		{
+			char* mfspath = strdup(path);
+			fq = calloc(1l, sizeof(FetchQueue));
+			fq->mfspath = mfspath;
+			fq->flag = 	calloc(1l, sizeof(char));
+			fq->filesize = stbuf->st_size;
+			g_hash_table_insert(g_fetchworker->g_fft->tab, mfspath, fq->flag);
+		}
+		PX_UNLOCK(&g_fetchworker->g_fft->mt);
+
+		if (fq != NULL)
+		{
+			int i = g_hash_table_size(g_fetchworker->g_fft->tab) % NUMFETCHWORKER;
+			FetchWorker* fw = g_fetchworker + i;
+
+			PX_LOCK(&fw->mt);
+			if(fw->head == NULL)
+			{
+				fw->head = fq;
+				fw->tail = fq;
+			}
+			else
+			{
+				fw->tail->next = fq;
+				fw->tail = fw->tail->next;
+			}
+			pthread_cond_signal(&fw->cv);
+			PX_UNLOCK(&fw->mt);
+		}
+	}
+}
+
 
 void ReadFileToCache(const char *path, off_t size)
 {

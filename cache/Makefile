@@ -21,10 +21,11 @@ rsc_objects = RSC/util.o RSC/RSC.o RSC/RSC_m.o RSC/prefetch.o
 main_objects = cachec.o 
 mkrcf_objects = RSC/mkrcf.o 
 rscck_objects = RSC/rscck.o 
-objects = $(rsc_objects) $(mkrcf_objects) $(rscck_objects) $(main_objects)
+seed_objects = RSC/pxseed.o 
+objects = $(rsc_objects) $(seed_objects) $(mkrcf_objects) $(rscck_objects) $(main_objects)
 # $(wbt_objects)
 
-progs = cache mkrcf rscck
+progs = cache mkrcf rscck seed
 
 .PHONY: all
 all: $(libs) $(progs) $(objects)
@@ -38,6 +39,9 @@ rscck: $(rscck_objects) $(rsc_objects)
 	$(CC) -o $@ $(LDFLAGS) $^  $(LDLIBS)
 	
 mkrcf: $(mkrcf_objects) $(rsc_objects)
+	$(CC) -o $@ $(LDFLAGS) $^  $(LDLIBS)
+	
+seed: $(seed_objects) $(rsc_objects)
 	$(CC) -o $@ $(LDFLAGS) $^  $(LDLIBS)
 
 .PHONY: progs

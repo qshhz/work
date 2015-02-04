@@ -68,7 +68,7 @@ static int cm_getattr(const char *path, struct stat *stbuf)
 
 	if (res == -1)
 		return -errno;
-#if 1
+#if 0
 	if (S_ISREG(stbuf->st_mode))
 	{
 		FetchQueue* fq = NULL;
@@ -842,6 +842,20 @@ static int cm_removexattr(const char *path, const char *name)
 }
 #endif /* HAVE_SETXATTR */
 
+pthread_mutex_t file_mt;
+static int cm_lock(const char *path, struct fuse_file_info *fi, int cmd,
+		    struct flock *lock)
+{
+	(void) path; // fcntl ulockmgr_op
+	PX_LOCK(&file_mt);
+
+	int res = fcntl(fi->fh, cmd, lock, &fi->lock_owner,
+			   sizeof(fi->lock_owner));
+
+	PX_UNLOCK(&file_mt);
+
+	return res;
+}
 
 static int cm_flock(const char *path, struct fuse_file_info *fi, int op)
 {
@@ -855,9 +869,47 @@ static int cm_flock(const char *path, struct fuse_file_info *fi, int op)
 	return 0;
 }
 
+static int cm_ioctl(const char *path, int cmd, void *arg,
+		      struct fuse_file_info *fi, unsigned int flags, void *data)
+{
+	(void) arg;
+	(void) fi;
+	(void) flags;
+
+//	if (fioc_file_type(path) != FIOC_FILE)
+//		return -EINVAL;
+//
+//	if (flags & FUSE_IOCTL_COMPAT)
+//		return -ENOSYS;
+//
+	switch (cmd) {
+	case PX_IOCTL_SEEDRSC:
+		printf("PX_IOCTL_SEEDRSC detected! %s\n", path);
+//		char mfspath[MAX_MFS_PATH];
+//		(*cmctx->fuseops.ioctl)(path, PX_IOCTL_GET_MFSPATH, NULL, NULL, 0, mfspath);
+//		QueueFileToRSC(stat, mfspath);
+
+		GETMFSPATH();
+		struct stat stbuf;
+		lstat(path, &stbuf);
+		QueueFileToRSC(&stbuf, path);
+
+		return 0;
+
+//	case FIOC_SET_SIZE:
+//		fioc_resize(*(size_t *)data);
+//		return 0;
+	}
+
+	return 0;
+//	return -EINVAL;
+}
+
+
 static void *cm_init(struct fuse_conn_info *conn)
 {
 //	Init_thd(WBT *wbt)
+	PX_ASSERT(pthread_mutex_init(&file_mt, NULL) == 0);
 	Init_RSC_table_m();
 	PX_ASSERT(pthread_mutex_init(&g_read_mt, &g_recursive_mt_attr) == 0);
 	return NULL;
@@ -909,10 +961,11 @@ static struct fuse_operations cm_oper = {
 	.listxattr	= cm_listxattr,
 	.removexattr	= cm_removexattr,
 #endif
-//	.lock		= cm_lock,///,  blksize=131072 -d -o nonempty -o  big_writes,max_write=131072
+	.lock		= cm_lock,///,  blksize=131072 -d -o nonempty -o  big_writes,max_write=131072
 	.flock		= cm_flock,
 
 	.flag_nullpath_ok = 1,
+	.ioctl		= cm_ioctl,
 	.init		= cm_init,
 	.destroy	= cm_destroy,
 #if HAVE_UTIMENSAT

@@ -7,7 +7,9 @@
 #include <sys/types.h>
 #include <assert.h>
 #include <glib.h>
+#include <fcntl.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
 
 //#define MAX_CMFILE_PATH 512
 //#define MAX_CMFILE_PATH 1024
@@ -293,6 +295,11 @@ void Init_fetch_thread();
 void Finit_fetch_thread();
 void Block_fetch_thread();
 void Wakeup_fetch_thread();
+void QueueFileToRSC(const struct stat *stbuf, const char* path);
+
+#define PX_IOCTL_TYPE 0xff
+
+#define PX_IOCTL_SEEDRSC _IO(PX_IOCTL_TYPE, 0) //reload bin.conf
 
 #endif
 
