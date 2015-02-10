@@ -896,9 +896,12 @@ static int cm_ioctl(const char *path, int cmd, void *arg,
 
 		return 0;
 
-//	case FIOC_SET_SIZE:
+	case PX_IOCTL_UPDATE_CACHE:;
+		cm_cache_io_t* t = (cm_cache_io_t *)data;
+		t->i++;
+		t->j++;
 //		fioc_resize(*(size_t *)data);
-//		return 0;
+		return 0;
 	}
 
 	return 0;

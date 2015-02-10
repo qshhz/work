@@ -11,6 +11,8 @@
 #include <sys/time.h>
 #include <sys/ioctl.h>
 
+
+
 //#define MAX_CMFILE_PATH 512
 //#define MAX_CMFILE_PATH 1024
 #define CBLKSIZE_REAL 131072l
@@ -297,8 +299,15 @@ void Block_fetch_thread();
 void Wakeup_fetch_thread();
 void QueueFileToRSC(const struct stat *stbuf, const char* path);
 
-#define PX_IOCTL_TYPE 0xff
+typedef struct
+{
+	int i;
+	int j;
+}cm_cache_io_t;
 
+//#define PX_IOCTL_RETURN_CACHE   _IOW(PX_IOCTL_TYPE, 14, cm_cache_io_t)
+#define PX_IOCTL_TYPE 0xff
+#define PX_IOCTL_UPDATE_CACHE _IOWR(PX_IOCTL_TYPE, 14, cm_cache_io_t)
 #define PX_IOCTL_SEEDRSC _IO(PX_IOCTL_TYPE, 0) //reload bin.conf
 
 #endif

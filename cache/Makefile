@@ -25,14 +25,14 @@ seed_objects = RSC/pxseed.o
 objects = $(rsc_objects) $(seed_objects) $(mkrcf_objects) $(rscck_objects) $(main_objects)
 # $(wbt_objects)
 
-progs = cache mkrcf rscck seed
+progs = rsccache mkrcf rscck seed
 
 .PHONY: all
 all: $(libs) $(progs) $(objects)
 
 	
 	
-cache: $(main_objects) $(rsc_objects)
+rsccache: $(main_objects) $(rsc_objects)
 	$(CC) -o $@ $(LDFLAGS) $^  $(LDLIBS)
 	
 rscck: $(rscck_objects) $(rsc_objects)
