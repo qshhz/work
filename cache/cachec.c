@@ -882,8 +882,9 @@ static int cm_ioctl(const char *path, int cmd, void *arg,
 //	if (flags & FUSE_IOCTL_COMPAT)
 //		return -ENOSYS;
 //
-	switch (cmd) {
-	case PX_IOCTL_SEEDRSC:
+	unsigned int ucmd = cmd;
+	if (ucmd == PX_IOCTL_SEEDRSC)
+	{
 		printf("PX_IOCTL_SEEDRSC detected! %s\n", path);
 //		char mfspath[MAX_MFS_PATH];
 //		(*cmctx->fuseops.ioctl)(path, PX_IOCTL_GET_MFSPATH, NULL, NULL, 0, mfspath);
@@ -893,15 +894,18 @@ static int cm_ioctl(const char *path, int cmd, void *arg,
 		struct stat stbuf;
 		lstat(path, &stbuf);
 		QueueFileToRSC(&stbuf, path);
-
-		return 0;
-
-	case PX_IOCTL_UPDATE_CACHE:;
+	}
+	else if (ucmd == PX_IOCTL_UPDATE_CACHE)
+	{
 		cm_cache_io_t* t = (cm_cache_io_t *)data;
 		t->i++;
 		t->j++;
+
+		GETMFSPATH();
+		struct stat stbuf;
+		lstat(path, &stbuf);
+		QueueFileToRSC(&stbuf, path);
 //		fioc_resize(*(size_t *)data);
-		return 0;
 	}
 
 	return 0;
