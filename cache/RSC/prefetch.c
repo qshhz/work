@@ -247,7 +247,7 @@ static void* fetchworker(void* arg)
 	FetchWorker* fw = (FetchWorker*)arg;
 
 //	PathEntry* pe = NULL;
-	while(PX_TRUE)
+	while(!fw->exit)
 	{
 		FetchQueue* mfsitem;
 
@@ -255,6 +255,11 @@ static void* fetchworker(void* arg)
 		while(fw->head == NULL)
 		{
 			pthread_cond_wait(&fw->cv, &fw->mt);
+			if(fw->exit)
+			{
+				PX_UNLOCK(&fw->mt);
+				break;
+			}
 		}
 
 		mfsitem = fw->head;
@@ -318,14 +323,17 @@ void Finit_fetch_thread()
 	int i=0;
 	while(i < NUMFETCHWORKER)
 	{
-		PX_ASSERT(pthread_cancel(fw->tid)==0);
+//		PX_ASSERT(pthread_cancel(fw->tid)==0); // dont use pthread cancel in here
+		PX_LOCK(&fw->mt);
+		fw->exit = 1;
+		pthread_cond_signal(&fw->cv);
+		PX_UNLOCK(&fw->mt);
 		fw++;
 		i++;
 	}
 
-	g_hash_table_destroy(g_fetchworker->g_fft->tab);
-
-	free(g_fetchworker);
+	g_hash_table_destroy(g_fft->tab);
+	free(g_fft);
 }
 
 void Init_fetch_thread()
@@ -336,10 +344,10 @@ void Init_fetch_thread()
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	Fetch_files_table* ffs = (Fetch_files_table*) calloc(1l, sizeof(Fetch_files_table));
-	ffs->tab = g_hash_table_new_full(g_str_hash, g_str_equal, free,
+	g_fft = (Fetch_files_table*) calloc(1l, sizeof(Fetch_files_table));
+	g_fft->tab = g_hash_table_new_full(g_str_hash, g_str_equal, free,
 			free); // Destory_file_block_table will free key space
-	PX_ASSERT(pthread_mutex_init(&ffs->mt, NULL) == 0);
+	PX_ASSERT(pthread_mutex_init(&g_fft->mt, NULL) == 0);
 
 	FetchWorker* fw = g_fetchworker;
 	int i=0;
@@ -349,8 +357,9 @@ void Init_fetch_thread()
 		PX_ASSERT(pthread_mutex_init(&fw->mt, NULL) == 0);
 		PX_ASSERT(pthread_cond_init(&fw->cv, NULL) == 0);
 		fw->using = 0;
+		fw->exit = 0;
 		fw->id = i;
-		fw->g_fft = ffs;
+		fw->g_fft = g_fft;
 
 		fw++;
 		i++;

@@ -115,6 +115,7 @@ void Destory_RSC_table_m()
 	g_hash_table_destroy(g_RSC_table_m->tab);
 	PX_UNLOCK(&g_RSC_table_m->mt);
 // fbt->keyaddr = NULL;// no need since when value destory function called, key destory function also called
+	free(g_fetchworker);
 	free(g_RSC_table_m);
 	PX_ASSERT(fclose(g_log_fp) == 0);
 #ifdef USEFREAD

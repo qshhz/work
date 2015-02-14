@@ -36,7 +36,8 @@
 
 
 //#define MOUNTPOINT "/px/mfs/10.0.10.10/media/data/rsc_test_dir/dom_NFS_MFS_1"
-#define MOUNTPOINT "/px/mfs/10.0.10.91/public_CIFS_2"
+//#define MOUNTPOINT "/px/mfs/10.0.10.91/public_CIFS_2"
+#define MOUNTPOINT "/home/geek/Downloads"
 
 #define PERROR(fmt, ...) {\
 	char str[MAX_MSG];\
@@ -273,6 +274,7 @@ typedef struct Fetch_files_table
 	GHashTable* tab; // key index of cache block, value
 	pthread_mutex_t mt;
 } Fetch_files_table;
+Fetch_files_table* g_fft;
 
 
 typedef struct FetchWorker
@@ -282,6 +284,7 @@ typedef struct FetchWorker
 	pthread_t tid;
 	int id;
 	int using;
+	int exit;
 	FetchQueue *head;
 	FetchQueue *tail;
 	Fetch_files_table* g_fft;
